@@ -3,5 +3,5 @@ using UnityEngine;
 
 public class Test : MonoBehaviour
 {
-    [SerializeField] public Door test;
+    [SerializeField, SerializeReference] private ISwitchable _helpmegod;
 }

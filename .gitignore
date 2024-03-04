@@ -1,0 +1,15 @@
+.idea
+Assets/Scenes
+Assets/Scripts_Internal
+Assets/Settings
+Library
+Logs
+obj 
+Packages
+ProjectSettings
+Temp
+UserSettings
+*.asset
+*.meta
+*.csproj
+*.sln
