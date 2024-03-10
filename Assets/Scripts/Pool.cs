@@ -1,27 +1,27 @@
 // This file showcases object pooling and factory working together
-
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Properties;
 using UnityEngine;
 
 public abstract class PoolableObject : MonoBehaviour
 {
     public abstract void Initialize();
     public abstract void Uninitialize();
+    
+    public void SetActive(bool active)
+    {
+        gameObject.SetActive(active);
+    }
 }
 
 public class Bot : PoolableObject
 {
     public override void Initialize()
     {
-        gameObject.SetActive(false);
     }
 
     public override void Uninitialize()
     {
-        gameObject.SetActive(true);
     }
 }
 
@@ -29,7 +29,7 @@ public class PoolableObjectFactory : MonoBehaviour
 {
     public static PoolableObjectFactory Instance;
     
-    [SerializeField] private GameObject objectToPool;
+    [SerializeField] private PoolableObject objectToPool;
 
     private void Awake()
     {
@@ -38,55 +38,62 @@ public class PoolableObjectFactory : MonoBehaviour
 
     public bool TryCreatePoolableObject(out PoolableObject poolableObject)
     {
-        GameObject obj = Instantiate(objectToPool, transform);
-        obj.transform.parent = transform;
-
-        if (obj.TryGetComponent(out PoolableObject objBehaviour))
+        PoolableObject newPoolableObject = Instantiate(objectToPool, transform);
+        
+        if (newPoolableObject != null)
         { 
-            poolableObject = objBehaviour;
+            newPoolableObject.transform.parent = transform;
+            poolableObject = newPoolableObject;
             
             return true;
         }
         
-        Debug.LogWarning($"Failed to pool {objectToPool}, missing component {nameof(PoolableObject)}");
+        Debug.LogWarning($"Failed to pool {objectToPool}, check for validity.");
         
-        Destroy(obj);
-
         poolableObject = null;
         return false;
     }
 }
 
-public static class Pool
+public class Pool<T> where T : PoolableObject
 {
-    private static readonly Stack<PoolableObject> PooledObjects = new();
-    private static uint _size;
+    private readonly Stack<T> PooledObjects = new();
+    private uint _size;
 
-    public static void PoolObject(PoolableObject poolableObject)
+    public void PoolObject(T poolableObject)
     {
+        if (poolableObject.GetType() != typeof(T))
+        {
+            Debug.LogError("Attempted to pool an object of incorrect type.");
+            return;
+        }
+        
         _size++;
 
         poolableObject.Initialize();
+        poolableObject.SetActive(false);
         PooledObjects.Push(poolableObject);
     }
     
-    public static void PoolObjects(PoolableObject[] poolableObjects)
+    public void PoolObjects(T[] poolableObjects)
     {
+        if (poolableObjects.GetType() != typeof(T[]))
+        {
+            Debug.LogError("Attempted to pool an object of incorrect type.");
+            return;
+        }
+        
         _size += (uint) poolableObjects.Length;
 
-        foreach (PoolableObject poolableObject in poolableObjects)
+        foreach (T poolableObject in poolableObjects)
         {
             poolableObject.Initialize();
+            poolableObject.SetActive(false);
             PooledObjects.Push(poolableObject);
         }
     }
-
-    public static List<PoolableObject> FetchObjectsByType<T>() where T : PoolableObject
-    {
-        return PooledObjects.Where(e => e.GetType() == typeof(T)).ToList();
-    }
     
-    public static PoolableObject Pop()
+    public PoolableObject Pop()
     {
         if (PooledObjects.Count == 0)
         {
@@ -97,26 +104,28 @@ public static class Pool
         }
         
         PoolableObject poolableObject = PooledObjects.Pop();
-        poolableObject.Uninitialize();
+        poolableObject.SetActive(true);
         
         return poolableObject;
     }
 
-    public static void Push(ref PoolableObject poolableObject)
+    public void Push(T poolableObject)
     {
         PooledObjects.Push(poolableObject);
-        poolableObject.Uninitialize();
+        poolableObject.SetActive(false);
     }
 
-    public static void Clear()
+    public void Clear()
     {
         PooledObjects.Clear();
     }
 }
 
-public class PoolManager : MonoBehaviour
+public class MyClass : MonoBehaviour
 {
-    [SerializeField, Range(0, 10000)] private int poolableObjectCount; 
+    [SerializeField, Range(0, 10000)] private int poolableObjectCount;
+
+    private Pool<Bot> _botPool;
     
     private void Start()
     {
@@ -125,7 +134,7 @@ public class PoolManager : MonoBehaviour
         {
             if (PoolableObjectFactory.Instance.TryCreatePoolableObject(out PoolableObject obj))
             {
-                Pool.PoolObject(obj);
+                _botPool.PoolObject((Bot) obj);
             }
 
             ++i;
@@ -134,7 +143,6 @@ public class PoolManager : MonoBehaviour
 
     private void OnApplicationQuit()
     {
-        Pool.Clear();
+        _botPool.Clear();
     }
 }
-
