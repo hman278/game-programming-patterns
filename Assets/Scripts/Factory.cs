@@ -41,6 +41,7 @@ public class EnemyFactory : EntityFactory
     {
         IEntity enemy = Instantiate(enemyPrefab, transform);
         enemy.Initialize();
+        enemy.EntityName = entityName;
         
         _entities.Add(Guid.NewGuid(), enemy);
 
