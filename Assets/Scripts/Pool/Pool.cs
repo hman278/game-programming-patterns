@@ -4,7 +4,8 @@ using UnityEngine;
 public class Pool<T> where T : Component, IPoolable
 {
     private readonly Stack<T> PooledObjects = new();
-    private uint _size;
+
+    public int Size => PooledObjects.Count;
 
     public void PoolObject(T poolableObject)
     {
@@ -13,8 +14,6 @@ public class Pool<T> where T : Component, IPoolable
             Debug.LogError("Attempted to pool an object of incorrect type.");
             return;
         }
-        
-        _size++;
 
         poolableObject.Initialize();
         poolableObject.SetActive(false);
@@ -29,8 +28,6 @@ public class Pool<T> where T : Component, IPoolable
             return;
         }
         
-        _size += (uint) poolableObjects.Length;
-
         foreach (T poolableObject in poolableObjects)
         {
             poolableObject.Initialize();
@@ -48,8 +45,6 @@ public class Pool<T> where T : Component, IPoolable
         
         T poolableObject = PooledObjects.Pop();
         poolableObject.SetActive(true);
-
-        _size--;
         
         return poolableObject;
     }
@@ -58,7 +53,6 @@ public class Pool<T> where T : Component, IPoolable
     {
         PooledObjects.Push(poolableObject);
         poolableObject.SetActive(false);
-        _size++;
     }
 
     public void Clear()
